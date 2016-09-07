@@ -1,0 +1,39 @@
+List: Documents
+Items Count: 7609
+Notebooks Count:16
+Folders Count:4038
+Sections Count:906
+File Type:True
+HTML File Type:True
+------------------------------------
+List: EduOneNoteAppDocuments
+Items Count: 1
+Notebooks Count:0
+Folders Count:1
+Sections Count:0
+File Type:True
+HTML File Type:True
+------------------------------------
+List: Form Templates
+Items Count: 0
+Notebooks Count:0
+Folders Count:0
+Sections Count:0
+File Type:True
+HTML File Type:True
+------------------------------------
+List: Site Assets
+Items Count: 22
+Notebooks Count:1
+Folders Count:4
+Sections Count:15
+File Type:True
+HTML File Type:True
+------------------------------------
+List: Style Library
+Items Count: 0
+Notebooks Count:0
+Folders Count:0
+Sections Count:0
+File Type:False
+HTML File Type:False
