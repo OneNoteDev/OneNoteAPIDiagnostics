@@ -91,8 +91,8 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 		/// <returns> SharePoint document library</returns>
 		public async Task<List> GetDocumentLibrary()
 		{
-			return await GetListByTitle("documents");
-		}
+            return await GetList(context.Web.DefaultDocumentLibrary());
+        }
 
 		/// <summary>
 		/// Retrieving SharePoint list by title
@@ -102,12 +102,17 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 		public async Task<List> GetListByTitle(string title)
 		{
 			var docLib = context.Web.Lists.GetByTitle(title);
-			context.Load(docLib, l => l.Title, l => l.ItemCount, l => l.Fields.Include(f => f.Title, f => f.Indexed, f => f.InternalName));
-			await ExecuteQuery();
-			return docLib;
+            return await GetList(docLib);
 		}
 
-		public async Task AddIndexOnListFields(List list)
+        public async Task<List> GetList(List list)
+        {
+            context.Load(list, l => l.Title, l => l.ItemCount, l => l.Fields.Include(f => f.Title, f => f.Indexed, f => f.InternalName));
+            await ExecuteQuery();
+            return list;
+        }
+
+        public async Task AddIndexOnListFields(List list)
 		{
 			foreach (Field field in list.Fields)
 			{
@@ -203,7 +208,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 		{
 			foreach (Field f in list.Fields)
 			{
-				if (!string.IsNullOrWhiteSpace(f.Title) && (f.Title.Contains("File Type") || f.Title.Contains("HTML File Type")))
+				if (!string.IsNullOrWhiteSpace(f.Title) && (f.Title.Contains("File Type") || f.Title.Contains("HTML File Type") || f.Title.Contains("Content Type Id")))
 				{
 					Logs.Add(f.Title + ":" + f.Indexed);
 				}
