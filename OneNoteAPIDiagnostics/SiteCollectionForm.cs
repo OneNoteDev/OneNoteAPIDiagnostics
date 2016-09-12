@@ -16,7 +16,12 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 		}
 
 		private async void GetInfoButton_Click(object sender, EventArgs e)
-		{            
+		{
+            if (!ValidateParameters())
+            {
+                return;
+            }
+
             await RetrieveSharePointInfo();
             var logText = Utilities.CreateLogText(listDict);
             ResultText.Text = Utilities.CreateLogText(listDict);
@@ -125,11 +130,6 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             {
                 if (!isProcessed)
                 {
-                    if (!ValidateParameters())
-                    {
-                        return;
-                    }
-
                     DisabledControls();
                     listDict = await Utilities.RetrieveSharePointLists(UrlText.Text, UserText.Text, PasswordText.Text, rdoAllList.Checked);
                     listBox.Items.Clear();
@@ -158,6 +158,11 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
         private async void viewHierarchy_Click(object sender, EventArgs e)
         {
+            if (!ValidateParameters())
+            {
+                return;
+            }
+
             await RetrieveSharePointInfo();
             HierarchyViewForm form = new HierarchyViewForm(listDict);
             form.Show();
@@ -175,6 +180,11 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
         private async void moveNotebooks_Click(object sender, EventArgs e)
         {
+            if (!ValidateParameters())
+            {
+                return;
+            }
+
             if (!rdoAllList.Checked)
             {
                 rdoAllList.Checked = true;

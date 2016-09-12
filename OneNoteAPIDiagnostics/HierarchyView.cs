@@ -39,7 +39,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
         private string CreateNodeText(SharePointFolder folder)
         {
-            return folder.Title; // + "- Items: " + folder.ItemCount + ", Notebooks: " + folder.NotebookCount + ", Folders: " + folder.FolderCount + ", Sections:" + folder.SectionCount;
+            return folder.Title + " (Items: " + folder.ItemCount + ")"; // ", Notebooks: " + folder.NotebookCount + ", Folders: " + folder.FolderCount + ", Sections:" + folder.SectionCount;
         }
 
         private void  AddStatsNode(TreeNode node, SharePointFolder folder)
