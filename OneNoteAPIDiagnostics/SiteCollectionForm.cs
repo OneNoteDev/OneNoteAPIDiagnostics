@@ -120,12 +120,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
         private async Task RetrieveSharePointInfo()
         {
-
-            UrlText.Text = "https://one-my.spoppe.com/personal/admin_one_ccsctp_net";
-            PasswordText.Text = "June2016";
-            //PasswordText.Text = "Microsoft~1";
-            UserText.Text = "admin@one.ccsctp.net";
-
+           
             try
             {
                 if (!isProcessed)

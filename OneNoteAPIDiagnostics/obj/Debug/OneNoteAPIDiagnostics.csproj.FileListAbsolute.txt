@@ -1,13 +1,1 @@
 C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.exe.config
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.exe
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.pdb
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Debug\Microsoft.SharePoint.Client.dll
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Debug\Microsoft.SharePoint.Client.Runtime.dll
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.Properties.Resources.resources
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.SiteCollectionForm.resources
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\OneNoteAPIDiagnostics.csproj.GenerateResource.Cache
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.exe
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.pdb
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.HierarchyViewForm.resources
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.MoveNotebooksForm.resources
-C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\obj\Debug\OneNoteAPIDiagnostics.csprojResolveAssemblyReference.cache
