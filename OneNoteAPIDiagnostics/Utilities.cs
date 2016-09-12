@@ -1,138 +1,102 @@
 ﻿using System;
-using Generic = System.Collections.Generic;
+using System.Collections.Generic;
 using System.Security;
 using System.Threading.Tasks;
 using System.Linq;
-using Microsoft.SharePoint.Client;
+using System.Text;
+using System.Windows.Forms;
 
 namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 {
-	public class Utilities : IDisposable
-	{
-		private const string Query = "<View Scope='RecursiveAll'><RowLimit>4999</RowLimit><ViewFields><FieldRef Name='HTML_x0020_File_x0020_Type' /><FieldRef Name='File_x0020_Type' /><FieldRef Name='ContentTypeId' /></ViewFields></View>";
-		private ClientContext context;
-
-		public Generic.IList<string> Logs
-		{
-			get;
-			private set;
-		}
-
-		public Utilities(string url, string userName, string password)
-		{
-			context = new ClientContext(url);
-			SecureString securePassword = new SecureString();
-			Array.ForEach(password.ToArray(), securePassword.AppendChar);
-			context.Credentials = new SharePointOnlineCredentials(userName, securePassword);
-			Logs = new Generic.List<string>();
-		}
-
-		/// <summary>
-		/// Processing SharePoint list to add Logs to collection
-		/// </summary>
-		/// <param name="lists"> SharePoint list collection</param>
-		/// <returns> task object</returns>
-		public async Task AddListsInfo(Generic.List<List> lists)
-		{
-			bool skipListSeparationLine = true;
-			bool addListTitle = lists.Count > 1;
-			foreach (var list in lists)
-			{
-				if (list.Fields.Any(field => field.Title == "File Type") &&
-					list.Fields.Any(field => field.Title == "HTML File Type"))
-				{
-					if (!skipListSeparationLine)
-					{
-						Logs.Add("------------------------------------");
-					}
-
-					if (addListTitle)
-					{
-						Logs.Add("List: " + list.Title);
-					}
-
-					Logs.Add("Items Count: " + list.ItemCount);
-					await AddOneNoteItemsInfo(list);
-					AddIndexingInfo(list);
-					skipListSeparationLine = false;
-				}
-			}
-		}
-
-		/// <summary>
-		/// Retrieving SharePoint list collection
-		/// </summary>
-		/// <returns> SharePoint list collection</returns>
-		public async Task<Generic.List<List>> GetLists()
-		{
-			Generic.List<List> resultLists = new Generic.List<List>();
-			IQueryable<List> listsWithIncludedProperty = ClientObjectQueryableExtension.Include(context.Web.Lists, 
-				list => list.Id, 
-				list => list.Title,
-				list => list.ItemCount, 
-				list => list.Fields.Include(f => f.Title, f => f.Indexed, f => f.InternalName));
-
-			IQueryable<List> listCollection =
-				listsWithIncludedProperty.Where(list => list.BaseType == BaseType.DocumentLibrary &&
-					(list.BaseTemplate == (int)ListTemplateType.DocumentLibrary ||
-					list.BaseTemplate == (int)ListTemplateType.MySiteDocumentLibrary) &&
-					list.Hidden == false);
-
-			Generic.IEnumerable<List> lists = context.LoadQuery(listCollection);
-			await ExecuteQuery();
-
-			lists.ForEach(list => resultLists.Add(list));
-			return resultLists;
-		}
-
-		/// <summary>
-		/// Retrieving SharePoint document library
-		/// </summary>
-		/// <returns> SharePoint document library</returns>
-		public async Task<List> GetDocumentLibrary()
-		{
-            return await GetList(context.Web.DefaultDocumentLibrary());
-        }
-
-		/// <summary>
-		/// Retrieving SharePoint list by title
-		/// </summary>
-		/// <param name="title"> SharePoint list title</param>
-		/// <returns> SharePoint document library</returns>
-		public async Task<List> GetListByTitle(string title)
-		{
-			var docLib = context.Web.Lists.GetByTitle(title);
-            return await GetList(docLib);
-		}
-
-        public async Task<List> GetList(List list)
+	public class Utilities
+    {
+        public static async Task<Dictionary<Guid, SharePointList>> RetrieveSharePointLists(string url, string user, string password, bool allLists)
         {
-            context.Load(list, l => l.Title, l => l.ItemCount, l => l.Fields.Include(f => f.Title, f => f.Indexed, f => f.InternalName));
-            await ExecuteQuery();
-            return list;
+            Dictionary<Guid, SharePointList> listDict = new Dictionary<Guid, SharePointList>();
+            using (CsomProxy csomProxy = new CsomProxy(url, user, password))
+            {
+                if (allLists)
+                {
+                    List<SharePointList> lists = await csomProxy.GetListsAsyc();
+                    foreach (var list in lists)
+                    {
+                        listDict.Add(list.Id, list);
+                    }
+                }
+                else
+                {
+                    var list = await csomProxy.GetDefaultDocumentLibraryAsyc();
+                    listDict.Add(list.Id, list);
+                }
+            }
+
+            return listDict;
         }
 
-        public async Task AddIndexOnListFields(List list)
+        /// <summary>
+        /// Processing SharePoint list to add Logs to collection
+        /// </summary>
+        /// <param name="lists"> SharePoint list collection</param>
+        /// <returns> task object</returns>
+        public static string CreateLogText(Dictionary<Guid, SharePointList> listDict)
 		{
-			foreach (Field field in list.Fields)
-			{
-				if (field.Title.Contains("File Type") || field.Title.Contains("HTML File Type"))
-				{
-					if (!field.Indexed)
-					{
-						field.Indexed = true;
-						field.Update();
-					}
-				}
-			}
+            StringBuilder sb = new StringBuilder();
+            bool isMultiple = listDict.Keys.Count > 1;
+            foreach (var dictItem in listDict)
+            {
+                if (isMultiple)
+                {
+                    sb.Append("Title: ");
+                    sb.Append(dictItem.Value.Title);
+                    sb.Append("\r\n");
+                }
 
-			await ExecuteQuery();
+                sb.Append("Url: ");
+                sb.Append(dictItem.Value.HostUrl + dictItem.Value.RootFolder.Path);
+                sb.Append("\r\n");
+
+                sb.Append("Item Count: ");
+                sb.Append(dictItem.Value.ListItemCount);
+                sb.Append("\r\n");
+
+                sb.Append("Notebook Count: ");
+                sb.Append(dictItem.Value.NotebookCount);
+                sb.Append("\r\n");
+
+                sb.Append("Folder Count: ");
+                sb.Append(dictItem.Value.FolderCount);
+                sb.Append("\r\n");
+
+                sb.Append("Section Count: ");
+                sb.Append(dictItem.Value.SectionCount);
+                sb.Append("\r\n");
+
+                sb.Append("Html File Type: ");
+                sb.Append(dictItem.Value.HtmlFileTypeIndexed);
+                sb.Append("\r\n");
+
+                sb.Append("Content Type Id: ");
+                sb.Append(dictItem.Value.ContentTypeIdIndexed);
+                sb.Append("\r\n");
+
+                sb.Append("File Type: ");
+                sb.Append(dictItem.Value.FileTypeIndexed);
+                sb.Append("\r\n");
+
+                if (isMultiple)
+                {
+                    sb.Append("-------------------------------------------\r\n");
+                }                
+            }
+
+            return sb.ToString();
 		}
+
 		/// <summary>
 		/// Adding Logs to file system. It suppresses the exception
 		/// </summary>
 		/// <param name="logInfo"> Log info text</param>
-		public void AddToLogFile(string logInfo)
+		public static void AddToLogFile(string logInfo)
 		{
 			try
 			{
@@ -153,98 +117,52 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 			}
 		}
 
-		/// <summary>
-		/// Adding OneNote items (Notebooks, SectionGroups and Sections) Logs to the collection
-		/// </summary>
-		/// <param name="list"> SharePoint list object</param>
-		/// <returns> task object</returns>
-		private async Task AddOneNoteItemsInfo(List list)
-		{
-			ListItemCollectionPosition pagePosition = null;
-			int notebooksCount = 0;
-			int foldersCount = 0;
-			int sectionsCount = 0;
+        public static string UserPrompt(string diaLogHeader, string dialogText)
+        {
+            Form userPrompt = new Form()
+            {
+                Width = 400,
+                Height = 150,
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.Fixed3D,               
+                Text = diaLogHeader,
+            
+            };
 
-			do
-			{
-				CamlQuery camlQuery = new CamlQuery();
-				camlQuery.ListItemCollectionPosition = pagePosition;
-				camlQuery.ViewXml = Query;
-				ListItemCollection items = list.GetItems(camlQuery);
-				context.Load(items);
-				await ExecuteQuery();
-				pagePosition = items.ListItemCollectionPosition;
-				foreach (var item in items)
-				{
-					object returnValue;
-					if (item.FieldValues.TryGetValue("File_x0020_Type", out returnValue) && returnValue != null && returnValue.ToString().Equals("one", StringComparison.OrdinalIgnoreCase))
-					{
-						sectionsCount++;
-					}
+            Label label = new Label() { Left = 23, Top = 20, Width=200, Text = dialogText };
+            userPrompt.Controls.Add(label);
+            
+            TextBox userInputTextBox = new TextBox() { Left = 25, Top = 45, Width = 350 };
+            userPrompt.Controls.Add(userInputTextBox);
 
-					if (item.FieldValues.TryGetValue("ContentTypeId", out returnValue) && returnValue != null && returnValue.ToString().StartsWith("0x0120", StringComparison.OrdinalIgnoreCase))
-					{
-						foldersCount++;
-					}
+            Button okButton = new Button() { Text = "Ok", Left = 25, Width = 50, Top = 75, DialogResult = DialogResult.OK };
+            okButton.Click += (sender, e) => 
+            {
+                if (!string.IsNullOrWhiteSpace(userInputTextBox.Text))
+                {
+                    userPrompt.Close();
+                }
+            };  
+                      
+            userPrompt.Controls.Add(okButton);            
+            userPrompt.AcceptButton = okButton;
+            return userPrompt.ShowDialog() == DialogResult.OK ? userInputTextBox.Text : "";
+        }
 
-					if (item.FieldValues.TryGetValue("HTML_x0020_File_x0020_Type", out returnValue) && returnValue != null && returnValue.ToString().Equals("OneNote.Notebook", StringComparison.OrdinalIgnoreCase))
-					{
-						notebooksCount++;
-					}
-				}
+        public static Form ProcessingDialog()
+        {
+            Form processingDialog = new Form()
+            {
+                Width = 100,
+                Height = 100,
+                StartPosition = FormStartPosition.CenterScreen,
+                FormBorderStyle = FormBorderStyle.FixedDialog      
+            };
 
-			} while (pagePosition != null);
+            Label label = new Label() { Left = 30, Top = 15, Text = "Processing..." };
+            processingDialog.Controls.Add(label);
 
-			Logs.Add("Notebooks Count:" + notebooksCount);
-			Logs.Add("Folders Count:" + foldersCount);
-			Logs.Add("Sections Count:" + sectionsCount);
-		}
-
-		/// <summary>
-		/// Adding index details Logs to the collection
-		/// </summary>
-		/// <param name="list"> SharePoint list object</param>
-		private void AddIndexingInfo(List list)
-		{
-			foreach (Field f in list.Fields)
-			{
-				if (!string.IsNullOrWhiteSpace(f.Title) && (f.Title.Contains("File Type") || f.Title.Contains("HTML File Type") || f.Title.Contains("Content Type Id")))
-				{
-					Logs.Add(f.Title + ":" + f.Indexed);
-				}
-			}
-		}
-
-		/// <summary>
-		/// Executing CSOM request asynchronously
-		/// </summary>
-		/// <returns> task object</returns>
-		private async Task ExecuteQuery()
-		{
-			await Task.Run(() => { context.ExecuteQuery(); });
-		}
-
-		#region IDisposable Support
-		private bool disposedValue = false; // To detect redundant calls
-
-		protected virtual void Dispose(bool disposing)
-		{
-			if (!disposedValue)
-			{
-				if (disposing)
-				{
-					context.Dispose();
-				}
-
-				disposedValue = true;
-			}
-		}
-
-		// This code added to correctly implement the disposable pattern.
-		public void Dispose()
-		{			
-			Dispose(true);
-		}
-		#endregion
-	}
+            return processingDialog;
+        }
+    }
 }
