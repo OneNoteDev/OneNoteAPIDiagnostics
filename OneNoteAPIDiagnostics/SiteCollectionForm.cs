@@ -190,11 +190,6 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         /// </summary>
         private bool ValidateParameters()
 		{
-#if DEBUG
-            UrlText.Text = "https://one-my.spoppe.com/personal/testuser1_one_ccsctp_net";
-            UserText.Text = "testuser1@one.ccsctp.net";
-            PasswordText.Text = "Microsoft~1";
-#endif
             if (string.IsNullOrWhiteSpace(UrlText.Text))
 			{
 				MessageBox.Show("Please enter SharePoint Url value.");

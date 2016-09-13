@@ -1,0 +1,1 @@
+C:\Users\pareman.REDMOND\Documents\GitHub\OneNoteDev\OneNoteAPIDiagnostics\OneNoteAPIDiagnostics\bin\Release\Microsoft.Office.OneNote.OneNoteAPIDiagnostics.exe.config
