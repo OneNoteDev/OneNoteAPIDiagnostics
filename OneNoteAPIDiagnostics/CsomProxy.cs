@@ -19,14 +19,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             context = new ClientContext(url);
             SecureString securePassword = new SecureString();
             Array.ForEach(password.ToArray(), securePassword.AppendChar);
-            context.Credentials = new SharePointOnlineCredentials(userName, securePassword);
-            
-            //for (int i = 1; i < 11; i++)
-            //{
-            //    var li = context.Web.Lists.GetByTitle("TestLib" + i.ToString());
-            //    li.DeleteObject();
-            //    context.ExecuteQuery();
-            //}
+            context.Credentials = new SharePointOnlineCredentials(userName, securePassword);            
         }
 
         /// <summary>
@@ -61,6 +54,16 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             List documentLibrary = context.Web.Lists.Add(listCreationInformation);
             documentLibrary.EnableFolderCreation = true;
             context.Load(documentLibrary);
+            context.Load(documentLibrary,
+                l => l.Id,
+                l => l.ParentWebUrl,
+                l => l.Title,
+                l => l.ItemCount,
+                l => l.RootFolder.ServerRelativeUrl,
+                l => l.Fields.Include(f => f.Title,
+                    f => f.Indexed,
+                    f => f.InternalName));
+
             await ExecuteQueryAsyc();
             return documentLibrary;
         }
@@ -208,6 +211,8 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             {
                 targetChildFolder.ListItemAllFields["HTML_x0020_File_x0020_Type"] = "OneNote.Notebook";
                 targetChildFolder.ListItemAllFields.Update();
+
+                sourceSource.DeleteObject();
                 await ExecuteQueryAsyc();
             }
         }

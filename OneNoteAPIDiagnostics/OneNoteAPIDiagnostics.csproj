@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Constants.cs" />
     <Compile Include="CsomProxy.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="HierarchyView.cs">
@@ -65,6 +66,11 @@
     </Compile>
     <Compile Include="MoveNotebooks.Designer.cs">
       <DependentUpon>MoveNotebooks.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="SharePointBase.cs" />
     <Compile Include="SharePointListItemType.cs" />
@@ -98,6 +104,13 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SiteCollectionForm.en-US.resx">
+      <DependentUpon>SiteCollectionForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="SiteCollectionForm.resx">
       <DependentUpon>SiteCollectionForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -119,7 +132,7 @@
     <Content Include="DLL\Microsoft.SharePoint.Client.dll" />
     <Content Include="DLL\Microsoft.SharePoint.Client.Runtime.dll" />
     <Content Include="Images\onenote.ico" />
-    <Content Include="Images\wait.gif" />
+    <EmbeddedResource Include="Images\wait.gif" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

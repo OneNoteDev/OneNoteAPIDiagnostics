@@ -12,59 +12,63 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 {
     
     public partial class MoveNotebooksForm : Form
-    {
-        Dictionary<Guid, SharePointList> listDict;
-        SiteCollectionForm form;
-        List<SharePointList> lists;
-        string _url;
-        string _user;
-        string _password;
-        public MoveNotebooksForm(Dictionary<Guid, SharePointList> dict, SiteCollectionForm siteCollectionForm, string url,string user, string password)
-        {
-            form = siteCollectionForm;
-            _url = url;
-            _user = user;
-            _password = password;
-            listDict = dict;
-            InitializeComponent();
-        }
-        
-        private void MoveNotebooks_Load(object sender, EventArgs e)
-        {
-            lists = new List<SharePointList>();
-            listDict.Values.ForEach(l => lists.Add(l));
-            selectListBox.ValueMember = "Id";
-            selectListBox.DisplayMember = "Title";
-            selectListBox.DataSource = lists;
-            InitializeControls();
-        }
+    {        
+        string siteUrl;
+        string user;
+        string password;
 
-        private void InitializeControls()
-        {
-            BindMoveToListBox();
-            notebookList.Items.Clear();
-            if (selectListBox.SelectedItem != null)
+        public MoveNotebooksForm()
+        {   
+            InitializeComponent();
+            Utilities.Items[Constants.MoveNotebooksFormItemKey] = this;
+
+            if (Utilities.Items.ContainsKey(Constants.SiteUrlItemKey))
             {
-                CreateNotebookList(selectListBox.SelectedItem as SharePointList);
+                siteUrl = Utilities.Items[Constants.SiteUrlItemKey].ToString();
+            }
+
+            if (Utilities.Items.ContainsKey(Constants.UserItemKey))
+            {
+                user = Utilities.Items[Constants.UserItemKey].ToString();
+            }
+
+            if (Utilities.Items.ContainsKey(Constants.PasswordItemKey))
+            {
+                password = Utilities.Items[Constants.PasswordItemKey].ToString();
             }
         }
 
-        private void BindMoveToListBox()
+        #region Events
+        private void MoveNotebooks_Load(object sender, EventArgs e)
         {
-            var sharePointList = selectListBox.SelectedItem as SharePointList;
-            var filteredList = lists.FindAll(f => !f.Id.Equals(sharePointList.Id));
-            
-            moveToListbox.ValueMember = "Id";
-            moveToListbox.DisplayMember = "Title";
-            moveToListbox.DataSource = filteredList;            
+            selectListBox.ValueMember = "Id";
+            selectListBox.DisplayMember = "Title";
+            var selectedItem = Utilities.SeletedThrottledList;
+            selectListBox.DataSource = Utilities.ThrottledLists;
+            if (Utilities.SeletedThrottledList == null && Utilities.ThrottledLists.Count > 0)
+            {
+                Utilities.SeletedThrottledList = Utilities.ThrottledLists[0];
+            }
+
+            selectListBox.SelectedItem = selectedItem;
+            InitializeControls();
         }
 
-        private void CreateNotebookList(SharePointList list)
+        private async void MoveButton_Click(object sender, EventArgs e)
         {
-            list.Notebooks.ForEach(notebook => notebookList.Items.Add(notebook.Title));
+            try
+            {
+                var moveToList = moveToListbox.SelectedItem as SharePointList;
+                DisabledControls();
+                await MoveFolder(moveToList.List);
+            }
+            finally
+            {
+                EnabledControls();
+            }
         }
 
-        private async void newDocumentLibrary_Click(object sender, EventArgs e)
+        private async void MoveToNewDocumentLibraryButton_Click(object sender, EventArgs e)
         {
             try
             {
@@ -75,104 +79,164 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
                     return;
                 }
 
-
                 DisabledControls();
 
-                using (CsomProxy csomProxy = new CsomProxy(_url, _user, _password))
+                using (CsomProxy csomProxy = new CsomProxy(siteUrl, user, password))
                 {
                     var docLib = await csomProxy.CreateDocumentLibraryAsyc(libTitle);
                     await MoveFolder(docLib);
                 }
             }
-            finally {
-
-                EnabledControls();
-            }
-        }
-
-        private async void btnMove_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                DisabledControls();
-                var moveToList = moveToListbox.SelectedItem as SharePointList;
-                await MoveFolder(moveToList.List);
-            }
             finally
             {
+
                 EnabledControls();
             }
         }
+        private void NotebookCheckedList_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            string messageFormat = "Notebooks-{0}, Section Groups-{1}, Sections-{2}";
+            int notebookCount = 0;
+            int sectionGroupCount = 0;
+            int sectionCount = 0; ;
+            var list = selectListBox.SelectedItem as SharePointList;
+            foreach (int selecedIndex in notebookCheckedList.CheckedIndices)
+            {
+                var notebook = list.Notebooks[selecedIndex];
+                notebookCount += notebook.NotebookCount;
+                sectionGroupCount += notebook.FolderCount;
+                sectionCount += notebook.SectionCount;
+            }
 
-        Form processingDialog = null;
+            var currentNotebook = list.Notebooks[e.Index];
+            if (e.NewValue == CheckState.Checked)
+            {
+                notebookCount += currentNotebook.NotebookCount;
+                sectionGroupCount += currentNotebook.FolderCount;
+                sectionCount += currentNotebook.SectionCount;
+            }
+            else if (e.NewValue == CheckState.Unchecked)
+            {
+                notebookCount -= currentNotebook.NotebookCount;
+                sectionGroupCount -= currentNotebook.FolderCount;
+                sectionCount -= currentNotebook.SectionCount;
+            }
+
+            selectedOneNoteItemsLabel.Text = string.Format(messageFormat, notebookCount, sectionGroupCount, sectionCount);
+        }
+
+        private void SelectListBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Utilities.SeletedThrottledList = selectListBox.SelectedItem as SharePointList;
+            InitializeControls();
+        }      
+        #endregion
+               
+        #region Helper Methods
+        private void BindMoveToListBox()
+        {
+            if (Utilities.SeletedThrottledList != null)
+            {
+                moveToListbox.Enabled = true;
+                var lists = new List<SharePointList>();
+                Utilities.SharePointInfo.Values.ForEach(l => lists.Add(l));
+                var filteredList = lists.FindAll(l => !l.Id.Equals(Utilities.SeletedThrottledList.Id)
+                    && l.RootFolder.NotebookCount < Constants.SPO_LIST_VIEW_THRESHOLD
+                    && l.RootFolder.SectionCount < Constants.SPO_LIST_VIEW_THRESHOLD
+                    && l.FolderCount < Constants.SPO_LIST_VIEW_THRESHOLD
+                    && (l.ListItemCount < Constants.INDEXABLE_SPO_LIST_SIZE_MAX
+                        || (l.HtmlFileTypeIndexed && l.FileTypeIndexed && l.ContentTypeIdIndexed)));
+
+                moveToListbox.ValueMember = "Id";
+                moveToListbox.DisplayMember = "Title";
+                moveToListbox.DataSource = filteredList;
+            }
+            else {
+                moveToListbox.Enabled = false;
+            }
+        }
+
+        private void CreateNotebookList(SharePointList list)
+        {
+            list.Notebooks.ForEach(notebook => notebookCheckedList.Items.Add(notebook.Title + string.Format(" (OneNote Items: {0})", notebook.NotebookCount + notebook.FolderCount + notebook.SectionCount)));
+        }
 
         private void DisabledControls()
         {
-            processingDialog = Utilities.ProcessingDialog();
-            processingDialog.Show();
+            Utilities.ProcessingDialog.Show();
             selectListBox.Enabled = false;
-            notebookList.Enabled = false;
+            notebookCheckedList.Enabled = false;
             moveToListbox.Enabled = false;
-            btnMove.Enabled = false;
-            newDocumentLibrary.Enabled = false;
+            MoveButton.Enabled = false;
+            moveToNewDocumentLibraryButton.Enabled = false;
+            lblMsg.Text = string.Empty;
+            lblMsg.Visible = false;
         }
 
         private void EnabledControls()
         {
-            if (processingDialog != null)
-            {
-                processingDialog.Hide();
-            }
-
+            Utilities.ProcessingDialog.Hide();
+            
             selectListBox.Enabled = true;
-            notebookList.Enabled = true;
+            notebookCheckedList.Enabled = true;
             moveToListbox.Enabled = true;
-            btnMove.Enabled = true;
-            newDocumentLibrary.Enabled = true;
+            MoveButton.Enabled = true;
+            moveToNewDocumentLibraryButton.Enabled = true;
+            lblMsg.Visible = true;
+            MoveNotebooks_Load(null, null);
         }
 
-        private async Task MoveFolder(SharePoint.Client.List TargetList)
+        private void InitializeControls()
         {
-            var list = selectListBox.SelectedItem as SharePointList;
+            moveToNewDocumentLibraryButton.Enabled = Utilities.ThrottledLists.Count > 0;
+            MoveButton.Enabled = Utilities.ThrottledLists.Count > 0;
+            
+            BindMoveToListBox();
+            notebookCheckedList.Items.Clear();
+            if (selectListBox.SelectedItem != null)
+            {
+                CreateNotebookList(selectListBox.SelectedItem as SharePointList);
+            }
+
+            selectListBox.Enabled = Utilities.ThrottledLists.Count > 0;
+        }
+
+        private async Task MoveFolder(SharePoint.Client.List targetList)
+        {            
             SharePointFolder notebook = null;
             try
             {
-                foreach (int selecedIndex in notebookList.CheckedIndices)
+                foreach (int selecedIndex in notebookCheckedList.CheckedIndices)
                 {
-                    notebook = list.Notebooks[selecedIndex];
-                    await MoveFolder(notebook, TargetList);
+                    notebook = Utilities.SeletedThrottledList.Notebooks[selecedIndex];
+                    using (CsomProxy csomProxy = new CsomProxy(siteUrl, user, password))
+                    {
+                        await csomProxy.MoveAsync(notebook.Path, targetList.Title);
+                    }
                 }
             }
             catch
             {
                 if (notebook != null)
                 {
-                    MessageBox.Show("Error while moving \"{0}\" notebook." + notebook.Title);
+                    MessageBox.Show(string.Format("Error while moving \"{0}\" notebook.", notebook.Title));
                 }
             }
 
-            listDict = await Utilities.RetrieveSharePointLists(_url, _user, _password, true);
-            form.listDict = listDict;
-            lists.Clear();
-            listDict.Values.ForEach(l => lists.Add(l));
-            var selectedItem = moveToListbox.SelectedItem;
-            selectListBox.DataSource = lists;
-            InitializeControls();
-        }
-
-        private async Task MoveFolder(SharePointFolder sourceFolder, SharePoint.Client.List targetList)
-        {
-            using (CsomProxy csomProxy = new CsomProxy(_url, _user, _password))
+            Utilities.SharePointInfo = await Utilities.RetrieveSharePointLists(siteUrl, user, password);
+            if (Utilities.SiteCollectionForm != null)
             {
-                await csomProxy.MoveAsync(sourceFolder.Path, targetList.Title);
+                Utilities.SiteCollectionForm.RefreshForm();
             }
-       }
 
-        private void selectListBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            notebookList.Items.Clear();
-            CreateNotebookList(selectListBox.SelectedItem as SharePointList);
-            BindMoveToListBox();
+            if (Utilities.HierarchyViewForm != null)
+            {
+                Utilities.HierarchyViewForm.RefreshForm();
+            }
+
+            Clipboard.SetText(notebook.SharePointList.HostUrl + targetList.RootFolder.ServerRelativeUrl);
+            lblMsg.Text = string.Format("Note: Notebooks moved to - {0}", notebook.SharePointList.HostUrl + targetList.RootFolder.ServerRelativeUrl);
         }
+        #endregion
     }
 }

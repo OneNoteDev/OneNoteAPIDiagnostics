@@ -5,29 +5,148 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Resources;
+using System.Reflection;
+using System.Threading;
+using System.Globalization;
 
 namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 {
-	public class Utilities
+	public static class Utilities
     {
-        public static async Task<Dictionary<Guid, SharePointList>> RetrieveSharePointLists(string url, string user, string password, bool allLists)
+        public static Dictionary<string, object> Items
+        {
+            get;
+            private set;
+        }
+        private static ResourceManager resources;
+
+        static Utilities()
+        {            
+            resources = new ResourceManager("Resources", Assembly.GetExecutingAssembly());
+            Items = new Dictionary<string, object>();
+        }
+
+        public static SiteCollectionForm SiteCollectionForm
+        {
+            get {
+                if (Items.ContainsKey(Constants.SiteCollectionFormItemKey))
+                {
+                    return Items[Constants.SiteCollectionFormItemKey] as SiteCollectionForm;
+                }
+
+                return null;
+            }
+        }
+
+        public static HierarchyViewForm HierarchyViewForm
+        {
+            get
+            {
+                if (Items.ContainsKey(Constants.HierarchyViewFormItemKey))
+                {
+                    return Items[Constants.HierarchyViewFormItemKey] as HierarchyViewForm;
+                }
+
+                return null;
+            }
+        }
+
+        public static MoveNotebooksForm MoveNotebooksForm
+        {
+            get
+            {
+                if (Items.ContainsKey(Constants.SiteCollectionFormItemKey))
+                {
+                    return Items[Constants.MoveNotebooksFormItemKey] as MoveNotebooksForm;
+                }
+
+                return null;
+            }
+        }
+
+        public static Dictionary<Guid, SharePointList> SharePointInfo
+        {
+            get
+            {
+                return Items[Constants.SharePointInfoItemKey] as Dictionary<Guid, SharePointList>;
+            }
+
+            set {
+                Items[Constants.SharePointInfoItemKey] = value;
+
+                if (value != null)
+                {
+                    List<SharePointList> throttledLists = new List<SharePointList>();
+                    foreach (var itemDict in value)
+                    {
+#if DEBUG
+                       throttledLists.Add(itemDict.Value);                       
+#else
+                        if (itemDict.Value.RootFolder.NotebookCount > Constants.SPO_LIST_VIEW_THRESHOLD
+                            || itemDict.Value.RootFolder.FolderCount > Constants.SPO_LIST_VIEW_THRESHOLD
+                            || itemDict.Value.RootFolder.SectionCount > Constants.SPO_LIST_VIEW_THRESHOLD
+                            || (itemDict.Value.ListItemCount > Constants.INDEXABLE_SPO_LIST_SIZE_MAX
+                                && (!itemDict.Value.HtmlFileTypeIndexed
+                                    || !itemDict.Value.FileTypeIndexed
+                                    || !itemDict.Value.ContentTypeIdIndexed)))
+                        {
+                            throttledLists.Add(itemDict.Value);
+                        }
+#endif
+                    }
+
+                    Items[Constants.SharePointThrottledListsItemKey] = throttledLists;
+                }
+            }
+        }
+
+        public static List<SharePointList> ThrottledLists
+        {
+            get
+            {
+                if (!Items.ContainsKey(Constants.SharePointThrottledListsItemKey))
+                {
+                    Items[Constants.SharePointThrottledListsItemKey] = new List<SharePointList>();
+                }
+
+                return Items[Constants.SharePointThrottledListsItemKey] as List<SharePointList>;
+            }
+        }
+
+        public static SharePointList SeletedThrottledList
+        {
+            get
+            {
+                if (Items.ContainsKey(Constants.SelectedThrottledListItemKey))
+                {
+                    return Items[Constants.SelectedThrottledListItemKey] as SharePointList;
+                }
+
+                return null;
+            }
+
+            set
+            {
+                Items[Constants.SelectedThrottledListItemKey] = value;
+            }
+        }
+
+        public static string GetLocalizedString(string key)
+        {
+            return resources.GetString(key, new CultureInfo("en-US"));
+        }
+
+        public static async Task<Dictionary<Guid, SharePointList>> RetrieveSharePointLists(string url, string user, string password)
         {
             Dictionary<Guid, SharePointList> listDict = new Dictionary<Guid, SharePointList>();
             using (CsomProxy csomProxy = new CsomProxy(url, user, password))
-            {
-                if (allLists)
+            {                
+                List<SharePointList> lists = await csomProxy.GetListsAsyc();
+                foreach (var list in lists)
                 {
-                    List<SharePointList> lists = await csomProxy.GetListsAsyc();
-                    foreach (var list in lists)
-                    {
-                        listDict.Add(list.Id, list);
-                    }
-                }
-                else
-                {
-                    var list = await csomProxy.GetDefaultDocumentLibraryAsyc();
                     listDict.Add(list.Id, list);
-                }
+                }              
             }
 
             return listDict;
@@ -38,49 +157,49 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         /// </summary>
         /// <param name="lists"> SharePoint list collection</param>
         /// <returns> task object</returns>
-        public static string CreateLogText(Dictionary<Guid, SharePointList> listDict)
+        public static string CreateLogText(List<SharePointList> lists)
 		{
             StringBuilder sb = new StringBuilder();
-            bool isMultiple = listDict.Keys.Count > 1;
-            foreach (var dictItem in listDict)
+            bool isMultiple = lists.Count > 1;
+            foreach (var list in lists)
             {
                 if (isMultiple)
                 {
                     sb.Append("Title: ");
-                    sb.Append(dictItem.Value.Title);
+                    sb.Append(list.Title);
                     sb.Append("\r\n");
                 }
 
                 sb.Append("Url: ");
-                sb.Append(dictItem.Value.HostUrl + dictItem.Value.RootFolder.Path);
+                sb.Append(list.HostUrl + list.RootFolder.Path);
                 sb.Append("\r\n");
 
                 sb.Append("Item Count: ");
-                sb.Append(dictItem.Value.ListItemCount);
+                sb.Append(list.ListItemCount);
                 sb.Append("\r\n");
 
                 sb.Append("Notebook Count: ");
-                sb.Append(dictItem.Value.NotebookCount);
+                sb.Append(list.NotebookCount);
                 sb.Append("\r\n");
 
                 sb.Append("Folder Count: ");
-                sb.Append(dictItem.Value.FolderCount);
+                sb.Append(list.FolderCount);
                 sb.Append("\r\n");
 
                 sb.Append("Section Count: ");
-                sb.Append(dictItem.Value.SectionCount);
+                sb.Append(list.SectionCount);
                 sb.Append("\r\n");
 
                 sb.Append("Html File Type: ");
-                sb.Append(dictItem.Value.HtmlFileTypeIndexed);
+                sb.Append(list.HtmlFileTypeIndexed);
                 sb.Append("\r\n");
 
                 sb.Append("Content Type Id: ");
-                sb.Append(dictItem.Value.ContentTypeIdIndexed);
+                sb.Append(list.ContentTypeIdIndexed);
                 sb.Append("\r\n");
 
                 sb.Append("File Type: ");
-                sb.Append(dictItem.Value.FileTypeIndexed);
+                sb.Append(list.FileTypeIndexed);
                 sb.Append("\r\n");
 
                 if (isMultiple)
@@ -149,7 +268,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             return userPrompt.ShowDialog() == DialogResult.OK ? userInputTextBox.Text : "";
         }
 
-        public static Form ProcessingDialog()
+        public static Form CreateProcessingDialog()
         {
             Form processingDialog = new Form()
             {
@@ -163,6 +282,23 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             processingDialog.Controls.Add(label);
 
             return processingDialog;
+        }
+
+        public static Form ProcessingDialog
+        {
+            get
+            {
+                if (!Utilities.Items.ContainsKey(Constants.ProcessingDialogFormItemKey))
+                {
+                    Utilities.Items[Constants.ProcessingDialogFormItemKey] = Utilities.CreateProcessingDialog();
+                }
+
+                return Utilities.Items[Constants.ProcessingDialogFormItemKey] as Form;
+            }            
+            set
+            {
+                Utilities.Items[Constants.ProcessingDialogFormItemKey] = value;
+            }
         }
     }
 }

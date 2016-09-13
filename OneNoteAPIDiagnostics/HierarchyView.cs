@@ -5,25 +5,61 @@ using System.Collections.Generic;
 namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 {
     public partial class HierarchyViewForm : System.Windows.Forms.Form
-    {
-        Dictionary<Guid, SharePointList> listDict;
-        public HierarchyViewForm(Dictionary<Guid, SharePointList> dict)
+    {        
+        public HierarchyViewForm()
         {
-            listDict = dict;
             InitializeComponent();
+            Utilities.Items[Constants.HierarchyViewFormItemKey] = this;
         }
 
+        #region Events        
         private void HierarchyView_Load(object sender, EventArgs e)
         {
-            IList<SharePointList> lists = new List<SharePointList>();
-            listDict.Values.ForEach(l => lists.Add(l));
-            selectListbox.ValueMember = "Id";
-            selectListbox.DisplayMember = "Title";
-            selectListbox.DataSource = lists;
-            if (selectListbox.SelectedItem != null)
+            try
             {
-                CreateHierarchy(selectListbox.SelectedItem as SharePointList);
-            }      
+                var selectedItem = Utilities.SeletedThrottledList;
+                SelectListbox.ValueMember = "Id";
+                SelectListbox.DisplayMember = "Title";
+                SelectListbox.DataSource = Utilities.ThrottledLists;
+                SelectListbox.SelectedItem = selectedItem;
+                if (SelectListbox.SelectedItem != null)
+                {
+                    CreateHierarchy(SelectListbox.SelectedItem as SharePointList);
+                }
+
+                SelectListbox.Enabled = Utilities.ThrottledLists.Count > 0;
+            }
+            finally
+            {
+                Utilities.ProcessingDialog.Hide();
+            }
+        }
+
+        private void MoveNotebookButton_Click(object sender, EventArgs e)
+        {
+            MoveNotebooksForm form = new MoveNotebooksForm();
+            form.Show();
+        }
+
+        private void SelectListbox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Utilities.SeletedThrottledList = SelectListbox.SelectedItem as SharePointList;
+            if (SelectListbox.SelectedItem != null)
+            {                
+                CreateHierarchy(SelectListbox.SelectedItem as SharePointList);
+            }
+        }
+
+        private void TreeView_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            Clipboard.SetText(e.Node.Text);
+        }
+        #endregion
+
+        #region Helper Methods
+        public void RefreshForm()
+        {
+            HierarchyView_Load(null, null);
         }
 
         private void CreateHierarchy(SharePointList list)
@@ -37,12 +73,12 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             root.Expand();
         }
 
-        private string CreateNodeText(SharePointFolder folder)
+        private static string CreateNodeText(SharePointFolder folder)
         {
-            return folder.Title + " (Items: " + folder.ItemCount + ")"; // ", Notebooks: " + folder.NotebookCount + ", Folders: " + folder.FolderCount + ", Sections:" + folder.SectionCount;
+            return folder.Title + " (Items: " + folder.ItemCount + ")";
         }
 
-        private void  AddStatsNode(TreeNode node, SharePointFolder folder)
+        private static void  AddStatsNode(TreeNode node, SharePointFolder folder)
         {
             var statNode = node.Nodes.Add("Stats");
             statNode.Nodes.Add("Items: " + folder.ItemCount);
@@ -53,7 +89,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             statNode.Expand();
          }
 
-        public void AddNode(TreeNode node, SharePointFolderCollection folders)
+        private static void AddNode(TreeNode node, SharePointFolderCollection folders)
         {
             foreach (SharePointFolder folder in folders)
             {
@@ -65,18 +101,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
                 }
             }
         }
+        #endregion
 
-        private void treeView_AfterSelect(object sender, TreeViewEventArgs e)
-        {
-            Clipboard.SetText(e.Node.Text);
-        }
-
-        private void selectListbox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (selectListbox.SelectedItem != null)
-            {
-                CreateHierarchy(selectListbox.SelectedItem as SharePointList);
-            }
-        }
     }
 }

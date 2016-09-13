@@ -6,70 +6,124 @@ using System.Windows.Forms;
 namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 {
 	public partial class SiteCollectionForm : System.Windows.Forms.Form
-	{
-        internal Dictionary<Guid, SharePointList> listDict;
+	{        
         bool isProcessed = false;
         
 		public SiteCollectionForm()
 		{
 			InitializeComponent();
-		}
+            Utilities.Items[Constants.SiteCollectionFormItemKey] = this;
+        }
 
-		private async void GetInfoButton_Click(object sender, EventArgs e)
-		{
+        #region Events
+        private void AllListRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            isProcessed = false;
+        }
+
+        private async void BuildIndexButton_Click(object sender, EventArgs e)
+        {
             if (!ValidateParameters())
             {
                 return;
             }
 
-            await RetrieveSharePointInfo();
-            var logText = Utilities.CreateLogText(listDict);
-            ResultText.Text = Utilities.CreateLogText(listDict);
-            Utilities.AddToLogFile(ResultText.Text);
-		}
+            if (listBox.SelectedItem == null)
+            {
+                MessageBox.Show("Select List");
+                listBox.Focus();
+                return;
+            }
 
-		private async void BuildIndexButton_Click(object sender, EventArgs e)
-		{
-			if (!ValidateParameters())
-			{
-				return;
-			}
-
-			if (listBox.SelectedItem == null)
-			{
-				MessageBox.Show("Select List");
-				listBox.Focus();
-				return;
-			}
-			try
-			{
-				DisabledControls();
+            try
+            {
+                DisabledControls();
                 using (CsomProxy csomProxy = new CsomProxy(UrlText.Text, UserText.Text, PasswordText.Text))
                 {
                     var lib = await csomProxy.GetListByTitleAsyc(listBox.SelectedItem.ToString());
-					await csomProxy.AddIndexOnListFieldsAsyc(lib);
-					lib = await csomProxy.GetListByTitleAsyc(listBox.SelectedItem.ToString());
-                    listDict[lib.Id] = lib;                    
-					ResultText.Text = Utilities.CreateLogText(listDict);
-					Utilities.AddToLogFile(ResultText.Text);
-				}
-			}
-			catch (Exception ex)
-			{
-				ResultText.Text = ex.ToString();
-			}
-			finally
-			{
-				EnabledControls();
-			}
+                    await csomProxy.AddIndexOnListFieldsAsyc(lib);
+                    isProcessed = false;
+                    ViewButton_Click(sender, e);
+                }
+            }
+            catch (Exception ex)
+            {
+                ResultText.Text = ex.ToString();
+            }
+            finally
+            {
+                EnabledControls();
+            }
+        }
+
+        private void listBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Utilities.SeletedThrottledList = listBox.SelectedItem as SharePointList;
+        }
+
+        private async void ViewButton_Click(object sender, EventArgs e)
+		{
+            if (await RetrieveSharePointInfo())
+            {
+                if (Utilities.ThrottledLists.Count > 0)
+                {
+                    var logText = Utilities.CreateLogText(Utilities.ThrottledLists);
+                    ResultText.Text = logText;
+                    Utilities.AddToLogFile(ResultText.Text);
+                }
+                else
+                {
+                    ResultText.Text = "All Ok. Site doesn't contain any list which has throttling issue";
+                }
+            }
 		}
 
-        Form processingDialog = null;
+        private async void ViewHierarchy_Click(object sender, EventArgs e)
+        {
+            Utilities.ProcessingDialog.Show();
+            if (await RetrieveSharePointInfo())
+            {
+                HierarchyViewForm form = new HierarchyViewForm();
+                form.Show();
+                ViewButton_Click(sender, e);
+            }
+        }
+
+        private async void MoveNotebooks_Click(object sender, EventArgs e)
+        {
+            isProcessed = false;            
+            if (await RetrieveSharePointInfo())
+            {
+                MoveNotebooksForm form = new MoveNotebooksForm();
+                form.Show();
+                ViewButton_Click(sender, e);
+            }
+        }
+
+        private void PasswordText_TextChanged(object sender, EventArgs e)
+        {
+            isProcessed = false;
+        }
+       
+        private void UrlText_TextChanged(object sender, EventArgs e)
+        {
+            isProcessed = false;
+        }
+        private void UserText_TextChanged(object sender, EventArgs e)
+        {
+            isProcessed = false;
+        }
+        #endregion
+
+        #region Helper Methods
+        public void RefreshForm()
+        {
+            ViewButton_Click(null, null);
+        }
 
         private void DisabledControls()
 		{
-            processingDialog = Utilities.ProcessingDialog();
-            processingDialog.Show();
+            Utilities.ProcessingDialog.Show();
             ResultText.Text = string.Empty;
 			UrlText.Enabled = false;
 			UserText.Enabled = false;
@@ -83,7 +137,8 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
 		private void EnabledControls()
 		{
-            processingDialog.Hide();
+            Utilities.ProcessingDialog.Hide();
+            
 			UrlText.Enabled = true;
 			UserText.Enabled = true;
 			PasswordText.Enabled = true;
@@ -94,106 +149,86 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             moveNotebooks.Enabled = true;
 		}
 
-		/// <summary>
-		/// Validating user inputs
-		/// </summary>
-		private bool ValidateParameters()
-		{
-			if (string.IsNullOrWhiteSpace(UrlText.Text))
-			{
-				MessageBox.Show("Please enter SharePoint Url value.");
-				UrlText.Focus();
-				return false;
-			}
-
-			if (string.IsNullOrWhiteSpace(UserText.Text))
-			{
-				MessageBox.Show("Please enter User value.");
-				UserText.Focus();
-				return false;
-			}
-
-			if (string.IsNullOrWhiteSpace(PasswordText.Text))
-			{
-				MessageBox.Show("Please enter Password.");
-				PasswordText.Focus();
-				return false;
-			}
-
-			return true;
-		}
-
-        private async Task RetrieveSharePointInfo()
+        private async Task<bool> RetrieveSharePointInfo()
         {
-           
+            if (!ValidateParameters())
+            {
+                return false;
+            }
+
             try
             {
                 if (!isProcessed)
                 {
                     DisabledControls();
-                    listDict = await Utilities.RetrieveSharePointLists(UrlText.Text, UserText.Text, PasswordText.Text, rdoAllList.Checked);
-                    listBox.Items.Clear();
-                    foreach (var listDictItem in listDict)
-                    {
-                        listBox.Items.Add(listDictItem.Value.Title);
-                    }
-                    
+                    Utilities.SharePointInfo = await Utilities.RetrieveSharePointLists(UrlText.Text, UserText.Text, PasswordText.Text);
+                    var selectedItem = Utilities.SeletedThrottledList;
+                    listBox.ValueMember = "Id";
+                    listBox.DisplayMember = "Title";
+                    listBox.DataSource = Utilities.ThrottledLists;
+                    listBox.SelectedItem = selectedItem;
                     isProcessed = true;
                 }
             }
             catch (Exception ex)
             {
                 ResultText.Text = ex.ToString();
+                return false;
             }
             finally
             {
                 EnabledControls();
+                BuildIndexButton.Enabled = Utilities.ThrottledLists.Count > 0;
+                listBox.Enabled = Utilities.ThrottledLists.Count > 0;
             }
+
+            return true;
         }
 
-        private void PasswordText_TextChanged(object sender, EventArgs e)
+        /// <summary>
+        /// Validating user inputs
+        /// </summary>
+        private bool ValidateParameters()
 		{
+#if DEBUG
+            UrlText.Text = "https://one-my.spoppe.com/personal/testuser1_one_ccsctp_net";
+            UserText.Text = "testuser1@one.ccsctp.net";
+            PasswordText.Text = "Microsoft~1";
+#endif
+            if (string.IsNullOrWhiteSpace(UrlText.Text))
+			{
+				MessageBox.Show("Please enter SharePoint Url value.");
+				UrlText.Focus();
+				return false;
+			}
 
+            Utilities.Items[Constants.SiteUrlItemKey] = UrlText.Text;
+
+            if (string.IsNullOrWhiteSpace(UserText.Text))
+			{
+				MessageBox.Show("Please enter User value.");
+				UserText.Focus();
+				return false;
+			}
+
+            Utilities.Items[Constants.UserItemKey] = UserText.Text;
+
+            if (string.IsNullOrWhiteSpace(PasswordText.Text))
+			{
+				MessageBox.Show("Please enter Password.");
+				PasswordText.Focus();
+				return false;
+			}
+
+            Utilities.Items[Constants.PasswordItemKey] = PasswordText.Text;
+
+            return true;
 		}
+        #endregion
 
-        private async void viewHierarchy_Click(object sender, EventArgs e)
+        private void SiteCollectionForm_Load(object sender, EventArgs e)
         {
-            if (!ValidateParameters())
-            {
-                return;
-            }
 
-            await RetrieveSharePointInfo();
-            HierarchyViewForm form = new HierarchyViewForm(listDict);
-            form.Show();
-        }
-
-        private void radioButton2_CheckedChanged(object sender, EventArgs e)
-        {
-            isProcessed = false;
-        }
-
-        private void rdoAllList_CheckedChanged(object sender, EventArgs e)
-        {
-            isProcessed = false;
-        }
-
-        private async void moveNotebooks_Click(object sender, EventArgs e)
-        {
-            if (!ValidateParameters())
-            {
-                return;
-            }
-
-            if (!rdoAllList.Checked)
-            {
-                rdoAllList.Checked = true;
-                isProcessed = false;
-            }
-
-            await RetrieveSharePointInfo();
-            MoveNotebooksForm form = new MoveNotebooksForm(listDict, this, UrlText.Text, UserText.Text, PasswordText.Text);
-            form.Show();
         }
     }
 }
