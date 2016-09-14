@@ -9,7 +9,6 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         public HierarchyViewForm()
         {
             InitializeComponent();
-            Utilities.Items[Constants.HierarchyViewFormItemKey] = this;
         }
 
         #region Events        
@@ -35,10 +34,19 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             }
         }
 
+        private void HierarchyViewForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Utilities.HierarchyViewForm = null;
+        }
+
         private void MoveNotebookButton_Click(object sender, EventArgs e)
         {
-            MoveNotebooksForm form = new MoveNotebooksForm();
-            form.Show();
+            if (Utilities.MoveNotebooksForm == null)
+            {
+                Utilities.MoveNotebooksForm = new MoveNotebooksForm();
+            }
+
+            Utilities.MoveNotebooksForm.Show();
         }
 
         private void SelectListbox_SelectedIndexChanged(object sender, EventArgs e)
@@ -102,6 +110,5 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             }
         }
         #endregion
-
     }
 }

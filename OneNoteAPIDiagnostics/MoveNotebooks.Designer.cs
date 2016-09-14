@@ -113,9 +113,9 @@
             this.lblMsg.AutoSize = true;
             this.lblMsg.Location = new System.Drawing.Point(22, 510);
             this.lblMsg.Name = "lblMsg";
-            this.lblMsg.Size = new System.Drawing.Size(139, 13);
+            this.lblMsg.Size = new System.Drawing.Size(0, 13);
             this.lblMsg.TabIndex = 8;
-             this.lblMsg.Visible = false;
+            this.lblMsg.Visible = false;
             // 
             // selectedOneNoteItemsLabel
             // 
@@ -145,6 +145,7 @@
             this.Name = "MoveNotebooksForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Move Notebooks";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.MoveNotebooksForm_FormClosed);
             this.Load += new System.EventHandler(this.MoveNotebooks_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

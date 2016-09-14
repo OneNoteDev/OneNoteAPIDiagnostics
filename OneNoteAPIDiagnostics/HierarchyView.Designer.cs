@@ -98,6 +98,7 @@
             this.Name = "HierarchyViewForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "View Hierarchy";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.HierarchyViewForm_FormClosed);
             this.Load += new System.EventHandler(this.HierarchyView_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

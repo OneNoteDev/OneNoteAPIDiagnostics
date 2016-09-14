@@ -37,6 +37,11 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
                 return null;
             }
+
+            set
+            {
+                Items[Constants.SiteCollectionFormItemKey] = value;
+            }
         }
 
         public static HierarchyViewForm HierarchyViewForm
@@ -50,18 +55,28 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
                 return null;
             }
+
+            set
+            {
+                Items[Constants.HierarchyViewFormItemKey] = value;
+            }
         }
 
         public static MoveNotebooksForm MoveNotebooksForm
         {
             get
             {
-                if (Items.ContainsKey(Constants.SiteCollectionFormItemKey))
+                if (Items.ContainsKey(Constants.MoveNotebooksFormItemKey))
                 {
                     return Items[Constants.MoveNotebooksFormItemKey] as MoveNotebooksForm;
                 }
 
                 return null;
+            }
+
+            set
+            {
+                Items[Constants.MoveNotebooksFormItemKey]  = value;
             }
         }
 

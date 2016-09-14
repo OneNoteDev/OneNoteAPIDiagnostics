@@ -17,7 +17,13 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 
         public bool ContentTypeIdIndexed { get; private set; }
 
-        public int ListItemCount { get; private set; }
+        public int ListItemCount
+        {
+            get
+            {
+                return List.ItemCount;
+            }
+        }
 
         public SharePointFolder RootFolder;
 
@@ -26,6 +32,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         public List List { get; internal set; }
 
         public string HostUrl { get; set; }
+
         public SharePointList(List list, string siteUrl)
         {
             Uri webUri = new Uri(siteUrl);
@@ -116,8 +123,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
  		private void UpdateListProperties()
         {
             Id = List.Id;
-            Title = List.Title;
-            ListItemCount = List.ItemCount;
+            Title = List.Title;            
             
             foreach (Field f in List.Fields)
             {

@@ -12,7 +12,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
 		public SiteCollectionForm()
 		{
 			InitializeComponent();
-            Utilities.Items[Constants.SiteCollectionFormItemKey] = this;
+            Utilities.SiteCollectionForm = this;
         }
 
         #region Events
@@ -83,19 +83,26 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             Utilities.ProcessingDialog.Show();
             if (await RetrieveSharePointInfo())
             {
-                HierarchyViewForm form = new HierarchyViewForm();
-                form.Show();
+                if (Utilities.HierarchyViewForm == null)
+                {
+                    Utilities.HierarchyViewForm = new HierarchyViewForm();
+                }
+
+                Utilities.HierarchyViewForm.Show();
                 ViewButton_Click(sender, e);
             }
         }
 
         private async void MoveNotebooks_Click(object sender, EventArgs e)
-        {
-            isProcessed = false;            
+        {          
             if (await RetrieveSharePointInfo())
             {
-                MoveNotebooksForm form = new MoveNotebooksForm();
-                form.Show();
+                if (Utilities.MoveNotebooksForm == null)
+                {
+                    Utilities.MoveNotebooksForm = new MoveNotebooksForm();
+                }
+
+                Utilities.MoveNotebooksForm.Show();
                 ViewButton_Click(sender, e);
             }
         }
@@ -190,6 +197,11 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         /// </summary>
         private bool ValidateParameters()
 		{
+#if DEBUG
+            UrlText.Text = "https://one-my.spoppe.com/personal/testuser1_one_ccsctp_net";
+            UserText.Text = "testuser1@one.ccsctp.net";
+            PasswordText.Text = "Microsoft~1";
+#endif
             if (string.IsNullOrWhiteSpace(UrlText.Text))
 			{
 				MessageBox.Show("Please enter SharePoint Url value.");

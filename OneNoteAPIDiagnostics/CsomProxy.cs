@@ -76,7 +76,8 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
                 list => list.ParentWebUrl,
                 list => list.Title,
                 list => list.ItemCount,
-                list => list.RootFolder.ServerRelativeUrl,
+                List => List.EnableFolderCreation,
+                list => list.RootFolder.ServerRelativeUrl,                
                 list => list.Fields.Include(f => f.Title, f => f.Indexed, f => f.InternalName));
 
             IQueryable<List> listCollection =
@@ -195,10 +196,18 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             targetChildFolder.Update();
             context.Load(targetChildFolder, tf => tf.ServerRelativeUrl);
             await ExecuteQueryAsyc();
+
+            // Moving 50 files in one batch
+            int batchCount = 0;
             foreach (var file in sourceSource.Files)
             {
                 var leafUrl = file.ListItemAllFields["FileLeafRef"].ToString();
                 file.MoveTo(targetChildFolder.ServerRelativeUrl + "/" + leafUrl, MoveOperations.Overwrite);
+                batchCount++;
+                if (batchCount % 50 == 0)
+                {
+                    await ExecuteQueryAsyc();
+                }
             }
 
             await ExecuteQueryAsyc();

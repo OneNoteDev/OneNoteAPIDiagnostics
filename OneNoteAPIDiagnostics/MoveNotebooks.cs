@@ -20,7 +20,7 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
         public MoveNotebooksForm()
         {   
             InitializeComponent();
-            Utilities.Items[Constants.MoveNotebooksFormItemKey] = this;
+            Utilities.MoveNotebooksForm = this;
 
             if (Utilities.Items.ContainsKey(Constants.SiteUrlItemKey))
             {
@@ -45,9 +45,9 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             selectListBox.DisplayMember = "Title";
             var selectedItem = Utilities.SeletedThrottledList;
             selectListBox.DataSource = Utilities.ThrottledLists;
-            if (Utilities.SeletedThrottledList == null && Utilities.ThrottledLists.Count > 0)
+            if (selectedItem == null && Utilities.ThrottledLists.Count > 0)
             {
-                Utilities.SeletedThrottledList = Utilities.ThrottledLists[0];
+                selectedItem = Utilities.ThrottledLists[0];
             }
 
             selectListBox.SelectedItem = selectedItem;
@@ -66,6 +66,11 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             {
                 EnabledControls();
             }
+        }
+
+        private void MoveNotebooksForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Utilities.MoveNotebooksForm = null;
         }
 
         private async void MoveToNewDocumentLibraryButton_Click(object sender, EventArgs e)
@@ -140,13 +145,18 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
                 moveToListbox.Enabled = true;
                 var lists = new List<SharePointList>();
                 Utilities.SharePointInfo.Values.ForEach(l => lists.Add(l));
-                var filteredList = lists.FindAll(l => !l.Id.Equals(Utilities.SeletedThrottledList.Id)
+                List<SharePointList> filteredList = null;
+#if DEBUG
+                filteredList = lists.FindAll(l => !l.Id.Equals(Utilities.SeletedThrottledList.Id));
+#else
+                filteredList = lists.FindAll(l => !l.Id.Equals(Utilities.SeletedThrottledList.Id)
+                    && l.List.EnableFolderCreation
                     && l.RootFolder.NotebookCount < Constants.SPO_LIST_VIEW_THRESHOLD
                     && l.RootFolder.SectionCount < Constants.SPO_LIST_VIEW_THRESHOLD
                     && l.FolderCount < Constants.SPO_LIST_VIEW_THRESHOLD
                     && (l.ListItemCount < Constants.INDEXABLE_SPO_LIST_SIZE_MAX
                         || (l.HtmlFileTypeIndexed && l.FileTypeIndexed && l.ContentTypeIdIndexed)));
-
+#endif
                 moveToListbox.ValueMember = "Id";
                 moveToListbox.DisplayMember = "Title";
                 moveToListbox.DataSource = filteredList;
@@ -237,6 +247,6 @@ namespace Microsoft.Office.OneNote.OneNoteAPIDiagnostics
             Clipboard.SetText(notebook.SharePointList.HostUrl + targetList.RootFolder.ServerRelativeUrl);
             lblMsg.Text = string.Format("Note: Notebooks moved to - {0}", notebook.SharePointList.HostUrl + targetList.RootFolder.ServerRelativeUrl);
         }
-        #endregion
+        #endregion        
     }
 }
